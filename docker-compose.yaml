@@ -1,0 +1,80 @@
+version: "3.7"
+
+services: 
+  ohoh-app:
+    build:
+      context: ./workspace
+      args:
+        APP_NAME: "ohoh-app"
+    container_name: ohoh-app
+    restart: unless-stopped
+    volumes:
+      - ${LARAVEL_APP_PATH}:/var/www/ohoh-app
+      - ./php/php.ini:/etc/php/8.0/fpm/php.ini
+    depends_on:
+      - ohoh-mysql
+      - ohoh-redis
+
+  ohoh-worker:
+    build:
+      context: ./workspace
+      args:
+        APP_NAME: "ohoh-worker"
+    container_name: ohoh-worker
+    restart: unless-stopped
+    command: ["supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf" ]
+    user: root
+    volumes:
+      - ${LARAVEL_APP_PATH}:/var/www/ohoh-app
+      - ./php/php.ini:/etc/php/8.0/fpm/php.ini
+      - ./supervisor:/etc/supervisor/conf.d
+    depends_on:
+      - ohoh-mysql
+      - ohoh-redis
+
+  ohoh-nginx:
+    image: nginx:1.19.6
+    container_name: ohoh-nginx
+    restart: unless-stopped
+    ports:
+      - 80:80
+    volumes:
+      - ${LARAVEL_APP_PATH}/public:/var/www/ohoh-app/public
+      - ./nginx:/etc/nginx/templates
+    environment:
+      - NGINX_UPSTREAM_APP=ohoh-app:9000
+    depends_on:
+      - ohoh-app
+
+  ohoh-mysql:
+    image: mysql:8.0.23
+    platform: linux/amd64
+    container_name: ohoh-mysql
+    restart: unless-stopped
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/my-8.0.cnf:/etc/mysql/conf.d/my.cnf
+    cap_add:
+      - SYS_NICE # fix issue of mysql 8, see https://github.com/docker-library/mysql/issues/422
+
+  ohoh-redis:
+    image: redis:6.0.10
+    container_name: ohoh-redis
+    restart: unless-stopped
+    ports:
+      - 6379:6379
+    volumes:
+      - 'redis:/data'
+
+volumes:
+  mysql_data:
+    driver: local
+  redis:
+    driver: local
