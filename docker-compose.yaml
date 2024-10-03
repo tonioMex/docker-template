@@ -1,55 +1,55 @@
-version: "3.7"
-
 services: 
-  ohoh-app:
+  laravel-app:
     build:
       context: ./workspace
+      dockerfile: Dockerfile-${PHP_VERSION}
       args:
-        APP_NAME: "ohoh-app"
-    container_name: ohoh-app
+        APP_NAME: "laravel-app"
+    container_name: laravel-app
     restart: unless-stopped
     volumes:
-      - ${LARAVEL_APP_PATH}:/var/www/ohoh-app
-      - ./php/php.ini:/etc/php/8.0/fpm/php.ini
+      - ${LARAVEL_APP_PATH}:/var/www/laravel-app
+      - ./php/php.ini:/etc/php/${PHP_VERSION}/fpm/php.ini
     depends_on:
-      - ohoh-mysql
-      - ohoh-redis
+      - mysql
+      - redis
 
-  ohoh-worker:
+  laravel-horizon:
     build:
       context: ./workspace
+      dockerfile: Dockerfile-${PHP_VERSION}
       args:
-        APP_NAME: "ohoh-worker"
-    container_name: ohoh-worker
+        APP_NAME: "laravel-app"
+    container_name: laravel-horizon
     restart: unless-stopped
     command: ["supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf" ]
     user: root
     volumes:
-      - ${LARAVEL_APP_PATH}:/var/www/ohoh-app
-      - ./php/php.ini:/etc/php/8.0/fpm/php.ini
+      - ${LARAVEL_APP_PATH}:/var/www/laravel-app
+      - ./php/php.ini:/etc/php/${PHP_VERSION}/fpm/php.ini
       - ./supervisor:/etc/supervisor/conf.d
     depends_on:
-      - ohoh-mysql
-      - ohoh-redis
+      - mysql
+      - redis
 
-  ohoh-nginx:
-    image: nginx:1.19.6
-    container_name: ohoh-nginx
+  nginx:
+    image: nginx:1.27.2
+    container_name: nginx
     restart: unless-stopped
     ports:
       - 80:80
     volumes:
-      - ${LARAVEL_APP_PATH}/public:/var/www/ohoh-app/public
+      - ${LARAVEL_APP_PATH}/public:/var/www/laravel-app/public
       - ./nginx:/etc/nginx/templates
     environment:
-      - NGINX_UPSTREAM_APP=ohoh-app:9000
+      - NGINX_UPSTREAM_APP=laravel-app:9000
     depends_on:
-      - ohoh-app
+      - laravel-app
 
-  ohoh-mysql:
-    image: mysql:8.0.23
+  mysql:
+    image: mysql:8.4.2
     platform: linux/amd64
-    container_name: ohoh-mysql
+    container_name: mysql
     restart: unless-stopped
     ports:
       - 3306:3306
@@ -64,9 +64,9 @@ services:
     cap_add:
       - SYS_NICE # fix issue of mysql 8, see https://github.com/docker-library/mysql/issues/422
 
-  ohoh-redis:
-    image: redis:6.0.10
-    container_name: ohoh-redis
+  redis:
+    image: redis:7.4
+    container_name: redis
     restart: unless-stopped
     ports:
       - 6379:6379

@@ -1,0 +1,61 @@
+FROM php:8.3-fpm
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LC_ALL=C.UTF-8
+ENV LC_CTYPE=C.UTF-8
+ENV LANG=C.UTF-8
+ENV LANGUAGE=C.UTF-8
+ARG APP_NAME
+
+# Install dependencies
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -qy apt-utils \
+      curl \
+      fonts-noto \
+      fonts-noto-cjk \
+      imagemagick \
+      libmagickwand-dev \
+      libzip-dev \
+      supervisor \
+      unzip \
+      wget \
+      zip; \
+    rm -rf /var/lib/apt/lists/*
+
+# Install PHP Extensions
+COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
+
+RUN install-php-extensions \
+  @composer-2 \
+  bcmath \
+  exif \
+  gd \
+  grpc \
+  mcrypt \
+  pcntl \
+  pdo_mysql \
+  redis \
+  xmlrpc \
+  zip 
+  
+# mlocati/php-extension-installer does not support imagick in php8.3 environment 
+RUN wget https://pecl.php.net/get/imagick-3.7.0.tgz && \
+    tar -zxvf imagick-3.7.0.tgz && \
+    cd imagick-3.7.0 && \
+    phpize && \
+    ./configure && \
+    make && \
+    make install && \
+    docker-php-ext-enable imagick
+
+# Add user & group
+RUN groupadd -g 1000 app && \
+  useradd -u 1000 -g app -G www-data,root -s /bin/bash app
+
+RUN mkdir -p /var/log/app && \
+  chown -R www-data:www-data /var/log/app && \
+  chmod g+w /var/log/app
+
+USER app
+WORKDIR /var/www/${APP_NAME}
