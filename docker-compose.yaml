@@ -61,8 +61,6 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./mysql/my-8.0.cnf:/etc/mysql/conf.d/my.cnf
-    cap_add:
-      - SYS_NICE # fix issue of mysql 8, see https://github.com/docker-library/mysql/issues/422
 
   redis:
     image: redis:7.4
