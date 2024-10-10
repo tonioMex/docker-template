@@ -53,9 +53,5 @@ RUN wget https://pecl.php.net/get/imagick-3.7.0.tgz && \
 RUN groupadd -g 1000 app && \
   useradd -u 1000 -g app -G www-data,root -s /bin/bash app
 
-RUN mkdir -p /var/log/app && \
-  chown -R www-data:www-data /var/log/app && \
-  chmod g+w /var/log/app
-
 USER app
 WORKDIR /var/www/${APP_NAME}
